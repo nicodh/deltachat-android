@@ -56,7 +56,7 @@ public class TestUtils {
       String name = description.getClassName() + "_" + description.getMethodName();
       try {
         Bitmap bitmap = getInstrumentation().getUiAutomation().takeScreenshot();
-        File dir = new File("/sdcard/test-screenshots");
+        File dir = new File(getInstrumentation().getTargetContext().getFilesDir(), "test-screenshots");
         dir.mkdirs();
         File file = new File(dir, name + ".png");
         try (FileOutputStream fos = new FileOutputStream(file)) {
