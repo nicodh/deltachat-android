@@ -1,9 +1,9 @@
 package com.b44t.messenger;
 
 import static androidx.test.espresso.Espresso.onView;
-import static androidx.test.espresso.action.ViewActions.typeText;
+import static androidx.test.espresso.action.ViewActions.click;
 import static androidx.test.espresso.matcher.ViewMatchers.isRoot;
-import static androidx.test.espresso.matcher.ViewMatchers.withHint;
+import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.platform.app.InstrumentationRegistry.getInstrumentation;
 
 import android.app.Activity;
@@ -38,7 +38,6 @@ import chat.delta.rpc.types.Account;
 
 public class TestUtils {
   private static int createdAccountId = 0;
-  private static boolean resetEnterSends = false;
   private static final List<Integer> onlineAccountIds = new ArrayList<>();
 
   public static class AccountInfo {
@@ -116,11 +115,7 @@ public class TestUtils {
   }
 
   public static void cleanup() {
-    Context context = getInstrumentation().getTargetContext();
-    cleanupCreatedAccount(context);
-    if (resetEnterSends) {
-      Prefs.setEnterSendsEnabled(getInstrumentation().getTargetContext(), false);
-    }
+    cleanupCreatedAccount(getInstrumentation().getTargetContext());
   }
 
   public static void createOfflineAccount() {
@@ -158,8 +153,9 @@ public class TestUtils {
   }
 
   public static void prepare() {
-    Prefs.setBooleanPreference(getInstrumentation().getTargetContext(), Prefs.DOZE_ASKED_DIRECTLY, true);
-    if (!AccessibilityUtil.areAnimationsDisabled(getInstrumentation().getTargetContext())) {
+    Context context = getInstrumentation().getTargetContext();
+    Prefs.setBooleanPreference(context, Prefs.DOZE_ASKED_DIRECTLY, true);
+    if (!AccessibilityUtil.areAnimationsDisabled(context)) {
       throw new RuntimeException(
           "To run the tests, disable animations at Developer options' "
               + "-> 'Window/Transition/Animator animation scale' -> Set all 3 to 'off'");
@@ -247,10 +243,6 @@ public class TestUtils {
    * So, this is a workaround for pressing the send button.
    */
   public static void pressSend() {
-    if (!Prefs.isEnterSendsEnabled(getInstrumentation().getTargetContext())) {
-      resetEnterSends = true;
-      Prefs.setEnterSendsEnabled(getInstrumentation().getTargetContext(), true);
-    }
-    waitForView(withHint(R.string.chat_input_placeholder), 10000, 100).perform(typeText("\n"));
+    onView(withId(R.id.send_button)).perform(click());
   }
 }
