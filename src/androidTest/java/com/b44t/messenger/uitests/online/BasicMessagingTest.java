@@ -22,6 +22,7 @@ import com.b44t.messenger.TestUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.FixMethodOrder;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.MethodSorters;
@@ -40,6 +41,9 @@ import chat.delta.rpc.Rpc;
 @LargeTest
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class BasicMessagingTest {
+
+  @Rule
+  public TestUtils.ScreenshotOnFailureRule screenshotRule = new TestUtils.ScreenshotOnFailureRule();
 
   private static TestUtils.AccountInfo alice;
   private static TestUtils.AccountInfo bob;

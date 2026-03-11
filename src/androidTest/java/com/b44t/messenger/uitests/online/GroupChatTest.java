@@ -21,6 +21,7 @@ import com.b44t.messenger.TestUtils;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.thoughtcrime.securesms.ConversationListActivity;
@@ -36,6 +37,9 @@ import chat.delta.rpc.Rpc;
 @RunWith(AndroidJUnit4.class)
 @LargeTest
 public class GroupChatTest {
+
+  @Rule
+  public TestUtils.ScreenshotOnFailureRule screenshotRule = new TestUtils.ScreenshotOnFailureRule();
 
   private static TestUtils.AccountInfo alice;
   private static TestUtils.AccountInfo bob;

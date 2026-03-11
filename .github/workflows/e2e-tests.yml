@@ -64,10 +64,10 @@ jobs:
           api-level: 29
           arch: x86_64
           disable-animations: true
-          script: >
-            ./gradlew --no-daemon connectedFossDebugAndroidTest
-            -Pandroid.testInstrumentationRunnerArguments.class=com.b44t.messenger.uitests.online.BasicMessagingTest,com.b44t.messenger.uitests.online.GroupChatTest
-            -Pandroid.testInstrumentationRunnerArguments.notAnnotation=org.junit.Ignore
+          script: |
+            ./gradlew --no-daemon connectedFossDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.b44t.messenger.uitests.online.BasicMessagingTest,com.b44t.messenger.uitests.online.GroupChatTest -Pandroid.testInstrumentationRunnerArguments.notAnnotation=org.junit.Ignore ; TESTS_EXIT_CODE=$?
+            adb pull /sdcard/test-screenshots/ test-screenshots/ || true
+            exit $TESTS_EXIT_CODE
 
       - name: Upload test results
         if: always()
@@ -83,4 +83,12 @@ jobs:
         with:
           name: e2e-test-reports
           path: build/reports/androidTests/**/
+          retention-days: 10
+
+      - name: Upload failure screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-screenshots
+          path: test-screenshots/
           retention-days: 10

@@ -12,6 +12,8 @@ import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.util.Log;
 import android.view.View;
 import androidx.annotation.NonNull;
 import androidx.test.espresso.NoMatchingViewException;
@@ -21,6 +23,8 @@ import androidx.test.espresso.ViewInteraction;
 import androidx.test.espresso.util.TreeIterables;
 import androidx.test.ext.junit.rules.ActivityScenarioRule;
 import org.hamcrest.Matcher;
+import org.junit.rules.TestWatcher;
+import org.junit.runner.Description;
 import org.thoughtcrime.securesms.ConversationListActivity;
 import org.thoughtcrime.securesms.R;
 import org.thoughtcrime.securesms.connect.AccountManager;
@@ -29,6 +33,8 @@ import org.thoughtcrime.securesms.util.AccessibilityUtil;
 import org.thoughtcrime.securesms.util.Prefs;
 import org.thoughtcrime.securesms.util.Util;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -39,8 +45,29 @@ import chat.delta.rpc.RpcException;
 import chat.delta.rpc.types.Account;
 
 public class TestUtils {
+  private static final String TAG = "TestUtils";
   private static int createdAccountId = 0;
   private static final List<Integer> onlineAccountIds = new ArrayList<>();
+
+  /** JUnit rule that takes a screenshot when a test fails. */
+  public static class ScreenshotOnFailureRule extends TestWatcher {
+    @Override
+    protected void failed(Throwable e, Description description) {
+      String name = description.getClassName() + "_" + description.getMethodName();
+      try {
+        Bitmap bitmap = getInstrumentation().getUiAutomation().takeScreenshot();
+        File dir = new File("/sdcard/test-screenshots");
+        dir.mkdirs();
+        File file = new File(dir, name + ".png");
+        try (FileOutputStream fos = new FileOutputStream(file)) {
+          bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
+        }
+        Log.i(TAG, "Screenshot saved: " + file.getAbsolutePath());
+      } catch (Exception ex) {
+        Log.e(TAG, "Failed to take screenshot", ex);
+      }
+    }
+  }
 
   public static class AccountInfo {
     public final int id;
