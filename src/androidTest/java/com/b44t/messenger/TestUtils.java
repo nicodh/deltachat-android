@@ -27,9 +27,85 @@ import org.thoughtcrime.securesms.util.AccessibilityUtil;
 import org.thoughtcrime.securesms.util.Prefs;
 import org.thoughtcrime.securesms.util.Util;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
+import chat.delta.rpc.Rpc;
+import chat.delta.rpc.RpcException;
+import chat.delta.rpc.types.Account;
+
 public class TestUtils {
   private static int createdAccountId = 0;
   private static boolean resetEnterSends = false;
+  private static final List<Integer> onlineAccountIds = new ArrayList<>();
+
+  public static class AccountInfo {
+    public final int id;
+    public final String address;
+    AccountInfo(int id, String address) {
+      this.id = id;
+      this.address = address;
+    }
+  }
+
+  /**
+   * Creates a fresh chatmail account by scanning a dcaccount: QR code.
+   * The chatmail server auto-generates credentials — no pre-configured secrets needed.
+   * This method blocks until configuration completes (up to 60 seconds).
+   */
+  public static AccountInfo createOnlineChatmailAccount(Context context) throws Exception {
+    int[] accountId = {0};
+    getInstrumentation().runOnMainSync(
+            () -> accountId[0] = AccountManager.getInstance().beginAccountCreation(context));
+    if (accountId[0] == 0) throw new RuntimeException("beginAccountCreation() returned 0");
+
+    Rpc rpc = DcHelper.getRpc(context);
+    Exception[] error = {null};
+    CountDownLatch latch = new CountDownLatch(1);
+    new Thread(() -> {
+      try {
+        rpc.addTransportFromQr(accountId[0], "dcaccount:ci-chatmail.testrun.org");
+      } catch (RpcException e) {
+        error[0] = e;
+      } finally {
+        latch.countDown();
+      }
+    }).start();
+
+    if (!latch.await(60, TimeUnit.SECONDS)) {
+      throw new RuntimeException("createOnlineChatmailAccount() timed out after 60s");
+    }
+    if (error[0] != null) throw error[0];
+
+    Account accountInfo = rpc.getAccountInfo(accountId[0]);
+    if (!(accountInfo instanceof Account.Configured)) {
+      throw new RuntimeException("Account " + accountId[0] + " is not configured after addTransportFromQr");
+    }
+    Account.Configured info = (Account.Configured) accountInfo;
+    onlineAccountIds.add(accountId[0]);
+    return new AccountInfo(accountId[0], info.addr);
+  }
+
+  /**
+   * Switches the currently selected account without touching the UI.
+   * Call this before launching an Activity in tests.
+   */
+  public static void switchAccount(Context context, int accountId) {
+    getInstrumentation().runOnMainSync(
+            () -> AccountManager.getInstance().switchAccount(context, accountId));
+  }
+
+  /** Removes all accounts created via {@link #createOnlineChatmailAccount}. */
+  public static void cleanupOnlineAccounts() {
+    Context context = getInstrumentation().getTargetContext();
+    DcAccounts accounts = DcHelper.getAccounts(context);
+    for (int id : onlineAccountIds) {
+      accounts.removeAccount(id);
+    }
+    onlineAccountIds.clear();
+  }
 
   public static void cleanupCreatedAccount(Context context) {
     DcAccounts accounts = DcHelper.getAccounts(context);
@@ -81,9 +157,8 @@ public class TestUtils {
         new Intent(getInstrumentation().getTargetContext(), activityClass));
   }
 
-  private static void prepare() {
-    Prefs.setBooleanPreference(
-        getInstrumentation().getTargetContext(), Prefs.DOZE_ASKED_DIRECTLY, true);
+  public static void prepare() {
+    Prefs.setBooleanPreference(getInstrumentation().getTargetContext(), Prefs.DOZE_ASKED_DIRECTLY, true);
     if (!AccessibilityUtil.areAnimationsDisabled(getInstrumentation().getTargetContext())) {
       throw new RuntimeException(
           "To run the tests, disable animations at Developer options' "
