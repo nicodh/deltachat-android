@@ -2,8 +2,10 @@ package com.b44t.messenger;
 
 import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.action.ViewActions.click;
+import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static androidx.test.espresso.matcher.ViewMatchers.isRoot;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
+import static org.hamcrest.CoreMatchers.allOf;
 import static androidx.test.platform.app.InstrumentationRegistry.getInstrumentation;
 
 import android.app.Activity;
@@ -243,6 +245,7 @@ public class TestUtils {
    * So, this is a workaround for pressing the send button.
    */
   public static void pressSend() {
+    waitForView(allOf(withId(R.id.send_button), isDisplayed()), 5000, 50);
     onView(withId(R.id.send_button)).perform(click());
   }
 }

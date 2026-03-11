@@ -2,7 +2,8 @@ package com.b44t.messenger.uitests.online;
 
 import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.action.ViewActions.click;
-import static androidx.test.espresso.action.ViewActions.typeText;
+import static androidx.test.espresso.action.ViewActions.closeSoftKeyboard;
+import static androidx.test.espresso.action.ViewActions.replaceText;
 import static androidx.test.espresso.contrib.RecyclerViewActions.actionOnItem;
 import static androidx.test.espresso.matcher.ViewMatchers.hasDescendant;
 import static androidx.test.espresso.matcher.ViewMatchers.withHint;
@@ -81,7 +82,7 @@ public class GroupChatTest {
       onView(withId(R.id.list))
               .perform(actionOnItem(hasDescendant(withText(GROUP_NAME)), click()));
 
-      onView(withHint(R.string.chat_input_placeholder)).perform(typeText(GROUP_MESSAGE));
+      onView(withHint(R.string.chat_input_placeholder)).perform(replaceText(GROUP_MESSAGE), closeSoftKeyboard());
       TestUtils.pressSend();
 
       TestUtils.waitForView(withText(GROUP_MESSAGE), 10_000, 100);
