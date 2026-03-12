@@ -15,6 +15,8 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.util.Log;
 import android.view.View;
+import android.widget.TextView;
+
 import androidx.annotation.NonNull;
 import androidx.test.espresso.NoMatchingViewException;
 import androidx.test.espresso.UiController;
@@ -255,7 +257,11 @@ public class TestUtils {
 
       } catch (Exception e) {
         if (tries == maxTries) {
-          throw e;
+          // Collect all visible text in the hierarchy for debugging
+          String debugInfo = collectVisibleText();
+          throw new RuntimeException(
+              "waitForView timed out after " + waitMillis + "ms looking for: " + viewMatcher
+              + "\n\nVisible text in view hierarchy:\n" + debugInfo, e);
         }
         Util.sleep(waitMillisPerTry);
       }
@@ -274,5 +280,30 @@ public class TestUtils {
   public static void pressSend() {
     waitForView(allOf(withId(R.id.send_button), isDisplayed()), 5000, 50);
     onView(withId(R.id.send_button)).perform(click());
+  }
+
+  /** Traverses the view hierarchy and returns all non-empty TextView text for debugging. */
+  private static String collectVisibleText() {
+    List<String> texts = new ArrayList<>();
+    try {
+      onView(isRoot()).perform(new ViewAction() {
+        @Override public Matcher<View> getConstraints() { return isRoot(); }
+        @Override public String getDescription() { return "collecting text views"; }
+        @Override public void perform(UiController uiController, View view) {
+          for (View v : TreeIterables.breadthFirstViewTraversal(view)) {
+            if (v instanceof TextView) {
+              CharSequence text = ((TextView) v).getText();
+              if (text != null && text.length() > 0) {
+                String vis = v.isShown() ? "VISIBLE" : "HIDDEN";
+                texts.add("  [" + vis + "] " + text);
+              }
+            }
+          }
+        }
+      });
+    } catch (Exception e) {
+      texts.add("  (failed to collect: " + e.getMessage() + ")");
+    }
+    return String.join("\n", texts);
   }
 }

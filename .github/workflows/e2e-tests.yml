@@ -68,6 +68,7 @@ jobs:
             ./gradlew --no-daemon connectedFossDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.b44t.messenger.uitests.online.BasicMessagingTest,com.b44t.messenger.uitests.online.GroupChatTest -Pandroid.testInstrumentationRunnerArguments.notAnnotation=org.junit.Ignore ; TESTS_EXIT_CODE=$?
             mkdir -p test-screenshots
             for f in $(adb shell run-as com.b44t.messenger.beta ls files/test-screenshots/ 2>/dev/null); do adb shell run-as com.b44t.messenger.beta cat files/test-screenshots/$f > test-screenshots/$f; done
+            adb exec-out screencap -p > test-screenshots/final-screen.png 2>/dev/null || true
             exit $TESTS_EXIT_CODE
 
       - name: Upload test results
