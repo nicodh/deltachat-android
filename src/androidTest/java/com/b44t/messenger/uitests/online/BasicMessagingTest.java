@@ -47,6 +47,8 @@ public class BasicMessagingTest {
 
   private static TestUtils.AccountInfo alice;
   private static TestUtils.AccountInfo bob;
+  private static int aliceChatWithBob;
+  private static int bobChatWithAlice;
 
   private static final String TEST_MESSAGE = "Hello from Alice to Bob!";
   private static final String TEST_REPLY   = "Hello back from Bob to Alice!";
@@ -67,10 +69,10 @@ public class BasicMessagingTest {
 
     // Pre-create contacts and 1:1 chats on both sides so the chat list is populated
     int aliceContactBobId = rpc.createContact(alice.id, bob.address, "Bob");
-    rpc.createChatByContactId(alice.id, aliceContactBobId);
+    aliceChatWithBob = rpc.createChatByContactId(alice.id, aliceContactBobId);
 
     int bobContactAliceId = rpc.createContact(bob.id, alice.address, "Alice");
-    rpc.createChatByContactId(bob.id, bobContactAliceId);
+    bobChatWithAlice = rpc.createChatByContactId(bob.id, bobContactAliceId);
   }
 
   @AfterClass
@@ -80,7 +82,7 @@ public class BasicMessagingTest {
   }
 
   @Test
-  public void test1_AliceSendsMessageToBob() {
+  public void test1_AliceSendsMessageToBob() throws Exception {
     Context context = getInstrumentation().getTargetContext();
 
     // --- Alice sends a message ---
@@ -100,6 +102,9 @@ public class BasicMessagingTest {
       TestUtils.waitForView(withText(TEST_MESSAGE), 10_000, 100);
     }
 
+    // Wait until the message is actually delivered via SMTP before switching to Bob
+    TestUtils.waitForMsgDelivered(context, alice.id, aliceChatWithBob, 30_000);
+
     // --- Bob receives the message ---
     TestUtils.switchAccount(context, bob.id);
     try (ActivityScenario<ConversationListActivity> ignored =
@@ -116,7 +121,7 @@ public class BasicMessagingTest {
   }
 
   @Test
-  public void test2_BobRepliesToAlice() {
+  public void test2_BobRepliesToAlice() throws Exception {
     Context context = getInstrumentation().getTargetContext();
 
     // --- Bob sends a reply ---
@@ -131,6 +136,9 @@ public class BasicMessagingTest {
       TestUtils.pressSend();
       TestUtils.waitForView(withText(TEST_REPLY), 10_000, 100);
     }
+
+    // Wait until the reply is actually delivered via SMTP before switching to Alice
+    TestUtils.waitForMsgDelivered(context, bob.id, bobChatWithAlice, 30_000);
 
     // --- Alice receives the reply ---
     TestUtils.switchAccount(context, alice.id);

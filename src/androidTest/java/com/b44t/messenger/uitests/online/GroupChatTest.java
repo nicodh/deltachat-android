@@ -43,6 +43,7 @@ public class GroupChatTest {
 
   private static TestUtils.AccountInfo alice;
   private static TestUtils.AccountInfo bob;
+  private static int groupChatId;
 
   private static final String GROUP_NAME    = "Test Group";
   private static final String GROUP_MESSAGE = "Hello group from Alice!";
@@ -61,7 +62,7 @@ public class GroupChatTest {
 
     // Create Bob as a contact on Alice's side and add him to a group
     int aliceContactBobId = rpc.createContact(alice.id, bob.address, "Bob");
-    int groupChatId = rpc.createGroupChat(alice.id, GROUP_NAME, false);
+    groupChatId = rpc.createGroupChat(alice.id, GROUP_NAME, false);
     rpc.addContactToChat(alice.id, groupChatId, aliceContactBobId);
 
     // Pre-create Alice as a contact on Bob's side for readable display names
@@ -75,7 +76,7 @@ public class GroupChatTest {
   }
 
   @Test
-  public void testAliceSendsGroupMessageBobReceivesIt() {
+  public void testAliceSendsGroupMessageBobReceivesIt() throws Exception {
     Context context = getInstrumentation().getTargetContext();
 
     // --- Alice sends a message to the group ---
@@ -91,6 +92,9 @@ public class GroupChatTest {
 
       TestUtils.waitForView(withText(GROUP_MESSAGE), 10_000, 100);
     }
+
+    // Wait until the message is actually delivered via SMTP before switching to Bob
+    TestUtils.waitForMsgDelivered(context, alice.id, groupChatId, 30_000);
 
     // --- Bob receives the group message ---
     TestUtils.switchAccount(context, bob.id);

@@ -45,6 +45,7 @@ import java.util.concurrent.TimeUnit;
 import chat.delta.rpc.Rpc;
 import chat.delta.rpc.RpcException;
 import chat.delta.rpc.types.Account;
+import chat.delta.rpc.types.Message;
 
 public class TestUtils {
   private static final String TAG = "TestUtils";
@@ -280,6 +281,42 @@ public class TestUtils {
   public static void pressSend() {
     waitForView(allOf(withId(R.id.send_button), isDisplayed()), 5000, 50);
     onView(withId(R.id.send_button)).perform(click());
+  }
+
+  /**
+   * Waits until the last outgoing message in the given chat reaches a delivered state.
+   * Throws if the message fails or the timeout expires.
+   */
+  public static void waitForMsgDelivered(Context context, int accountId, int chatId, int timeoutMs)
+          throws Exception {
+    Rpc rpc = DcHelper.getRpc(context);
+    long deadline = System.currentTimeMillis() + timeoutMs;
+    while (System.currentTimeMillis() < deadline) {
+      List<Integer> msgIds = rpc.getMessageIds(accountId, chatId, false, false);
+      if (!msgIds.isEmpty()) {
+        int lastMsgId = msgIds.get(msgIds.size() - 1);
+        Message msg = rpc.getMessage(accountId, lastMsgId);
+        Log.i(TAG, "waitForMsgDelivered: msg " + lastMsgId + " state=" + msg.state
+                + " text=" + msg.text);
+        if (msg.state >= DcMsg.DC_STATE_OUT_DELIVERED) {
+          return;
+        }
+        if (msg.state == DcMsg.DC_STATE_OUT_FAILED) {
+          throw new RuntimeException("Message " + lastMsgId + " failed to send: " + msg.error);
+        }
+      }
+      Util.sleep(500);
+    }
+    // Collect final state for debugging
+    List<Integer> msgIds = rpc.getMessageIds(accountId, chatId, false, false);
+    String lastState = "no messages";
+    if (!msgIds.isEmpty()) {
+      int lastMsgId = msgIds.get(msgIds.size() - 1);
+      Message msg = rpc.getMessage(accountId, lastMsgId);
+      lastState = "msg " + lastMsgId + " state=" + msg.state + " error=" + msg.error;
+    }
+    throw new RuntimeException("waitForMsgDelivered timed out after " + timeoutMs
+            + "ms. Last state: " + lastState);
   }
 
   /** Traverses the view hierarchy and returns all non-empty TextView text for debugging. */
