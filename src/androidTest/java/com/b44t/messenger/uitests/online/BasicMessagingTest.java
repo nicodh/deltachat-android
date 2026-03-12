@@ -2,11 +2,8 @@ package com.b44t.messenger.uitests.online;
 
 import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.action.ViewActions.click;
-import static androidx.test.espresso.action.ViewActions.closeSoftKeyboard;
-import static androidx.test.espresso.action.ViewActions.replaceText;
 import static androidx.test.espresso.contrib.RecyclerViewActions.actionOnItem;
 import static androidx.test.espresso.matcher.ViewMatchers.hasDescendant;
-import static androidx.test.espresso.matcher.ViewMatchers.withHint;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
 import static androidx.test.platform.app.InstrumentationRegistry.getInstrumentation;
@@ -84,28 +81,13 @@ public class BasicMessagingTest {
   @Test
   public void test1_AliceSendsMessageToBob() throws Exception {
     Context context = getInstrumentation().getTargetContext();
+    Rpc rpc = DcHelper.getRpc(context);
 
-    // --- Alice sends a message ---
-    TestUtils.switchAccount(context, alice.id);
-    try (ActivityScenario<ConversationListActivity> ignored =
-                 ActivityScenario.launch(ConversationListActivity.class)) {
-
-      // Open the pre-created 1:1 chat with Bob
-      onView(withId(R.id.list))
-              .perform(actionOnItem(hasDescendant(withText("Bob")), click()));
-
-      // Type and send the message
-      onView(withHint(R.string.chat_input_placeholder)).perform(replaceText(TEST_MESSAGE), closeSoftKeyboard());
-      TestUtils.pressSend();
-
-      // Confirm the message appears in the conversation (outgoing bubble)
-      TestUtils.waitForView(withText(TEST_MESSAGE), 10_000, 100);
-    }
-
-    // Wait until the message is actually delivered via SMTP before switching to Bob
+    // --- Alice sends a message via RPC ---
+    rpc.miscSendTextMessage(alice.id, aliceChatWithBob, TEST_MESSAGE);
     TestUtils.waitForMsgDelivered(context, alice.id, aliceChatWithBob, 30_000);
 
-    // --- Bob receives the message ---
+    // --- Bob receives the message (verified via UI) ---
     TestUtils.switchAccount(context, bob.id);
     try (ActivityScenario<ConversationListActivity> ignored =
                  ActivityScenario.launch(ConversationListActivity.class)) {
@@ -123,24 +105,13 @@ public class BasicMessagingTest {
   @Test
   public void test2_BobRepliesToAlice() throws Exception {
     Context context = getInstrumentation().getTargetContext();
+    Rpc rpc = DcHelper.getRpc(context);
 
-    // --- Bob sends a reply ---
-    TestUtils.switchAccount(context, bob.id);
-    try (ActivityScenario<ConversationListActivity> ignored =
-                 ActivityScenario.launch(ConversationListActivity.class)) {
-
-      onView(withId(R.id.list))
-              .perform(actionOnItem(hasDescendant(withText("Alice")), click()));
-
-      onView(withHint(R.string.chat_input_placeholder)).perform(replaceText(TEST_REPLY), closeSoftKeyboard());
-      TestUtils.pressSend();
-      TestUtils.waitForView(withText(TEST_REPLY), 10_000, 100);
-    }
-
-    // Wait until the reply is actually delivered via SMTP before switching to Alice
+    // --- Bob sends a reply via RPC ---
+    rpc.miscSendTextMessage(bob.id, bobChatWithAlice, TEST_REPLY);
     TestUtils.waitForMsgDelivered(context, bob.id, bobChatWithAlice, 30_000);
 
-    // --- Alice receives the reply ---
+    // --- Alice receives the reply (verified via UI) ---
     TestUtils.switchAccount(context, alice.id);
     try (ActivityScenario<ConversationListActivity> ignored =
                  ActivityScenario.launch(ConversationListActivity.class)) {

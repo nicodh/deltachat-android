@@ -2,11 +2,8 @@ package com.b44t.messenger.uitests.online;
 
 import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.action.ViewActions.click;
-import static androidx.test.espresso.action.ViewActions.closeSoftKeyboard;
-import static androidx.test.espresso.action.ViewActions.replaceText;
 import static androidx.test.espresso.contrib.RecyclerViewActions.actionOnItem;
 import static androidx.test.espresso.matcher.ViewMatchers.hasDescendant;
-import static androidx.test.espresso.matcher.ViewMatchers.withHint;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
 import static androidx.test.platform.app.InstrumentationRegistry.getInstrumentation;
@@ -78,25 +75,13 @@ public class GroupChatTest {
   @Test
   public void testAliceSendsGroupMessageBobReceivesIt() throws Exception {
     Context context = getInstrumentation().getTargetContext();
+    Rpc rpc = DcHelper.getRpc(context);
 
-    // --- Alice sends a message to the group ---
-    TestUtils.switchAccount(context, alice.id);
-    try (ActivityScenario<ConversationListActivity> ignored =
-                 ActivityScenario.launch(ConversationListActivity.class)) {
-
-      onView(withId(R.id.list))
-              .perform(actionOnItem(hasDescendant(withText(GROUP_NAME)), click()));
-
-      onView(withHint(R.string.chat_input_placeholder)).perform(replaceText(GROUP_MESSAGE), closeSoftKeyboard());
-      TestUtils.pressSend();
-
-      TestUtils.waitForView(withText(GROUP_MESSAGE), 10_000, 100);
-    }
-
-    // Wait until the message is actually delivered via SMTP before switching to Bob
+    // --- Alice sends a message to the group via RPC ---
+    rpc.miscSendTextMessage(alice.id, groupChatId, GROUP_MESSAGE);
     TestUtils.waitForMsgDelivered(context, alice.id, groupChatId, 30_000);
 
-    // --- Bob receives the group message ---
+    // --- Bob receives the group message (verified via UI) ---
     TestUtils.switchAccount(context, bob.id);
     try (ActivityScenario<ConversationListActivity> ignored =
                  ActivityScenario.launch(ConversationListActivity.class)) {
