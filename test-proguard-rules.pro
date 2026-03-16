@@ -36,3 +36,7 @@
 -dontwarn org.junit.platform.commons.support.ReflectionSupport
 -dontwarn org.opentest4j.MultipleFailuresError
 -dontwarn org.w3c.dom.bootstrap.DOMImplementationRegistry
+
+-keep class kotlin.** { *; }
+-keep class kotlin.Metadata { *; }
+-keep class kotlin.jvm.internal.** { *; }

@@ -1,0 +1,96 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  e2e:
+    name: Run E2E Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          working-directory: jni/deltachat-core-rust
+
+      - uses: actions/setup-java@v5
+        with:
+          java-version: 17
+          distribution: temurin
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: r27
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Compile core (x86_64 for emulator)
+        env:
+          ANDROID_NDK_ROOT: ${{ steps.setup-ndk.outputs.ndk-path }}
+        run: |
+          export PATH="${PATH}:${ANDROID_NDK_ROOT}/toolchains/llvm/prebuilt/linux-x86_64/bin/"
+          scripts/install-toolchains.sh && scripts/ndk-make.sh x86_64
+
+      - name: Run E2E tests on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          arch: x86_64
+          disable-animations: true
+          script: |
+            ./gradlew --no-daemon connectedFossDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.b44t.messenger.uitests.online.BasicMessagingTest,com.b44t.messenger.uitests.online.GroupChatTest -Pandroid.testInstrumentationRunnerArguments.notAnnotation=org.junit.Ignore ; TESTS_EXIT_CODE=$?
+            mkdir -p test-screenshots
+            for f in $(adb shell run-as com.b44t.messenger.beta ls files/test-screenshots/ 2>/dev/null); do adb shell run-as com.b44t.messenger.beta cat files/test-screenshots/$f > test-screenshots/$f; done
+            adb exec-out screencap -p > test-screenshots/final-screen.png 2>/dev/null || true
+            exit $TESTS_EXIT_CODE
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results
+          path: build/outputs/androidTest-results/**/
+          retention-days: 10
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-reports
+          path: build/reports/androidTests/**/
+          retention-days: 10
+
+      - name: Upload failure screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-screenshots
+          path: test-screenshots/
+          retention-days: 10

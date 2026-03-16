@@ -13,3 +13,7 @@
 -keep class org.thoughtcrime.securesms.crypto.KeyStoreHelper* { *; }
 
 -dontwarn com.google.firebase.analytics.connector.AnalyticsConnector
+
+-keep class kotlin.** { *; }
+-keep class kotlin.Metadata { *; }
+-keep class kotlin.jvm.internal.** { *; }
